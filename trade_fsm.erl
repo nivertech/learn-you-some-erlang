@@ -1,7 +1,7 @@
 -module(trade_fsm).
 -behaviour(gen_fsm).
 
-%% Public API
+%% public API
 -export([start/1, start_link/1, trade/2, accept_trade/1,
          make_offer/2, retract_offer/2, ready/1, cancel/1]).
 %% gen_fsm callbacks
@@ -19,6 +19,7 @@
                 from}).
 
 %%% PUBLIC API
+
 start(Name) ->
     gen_fsm:start(?MODULE, [Name], []).
 
@@ -94,9 +95,6 @@ do_commit(OtherPid) ->
 
 notify_cancel(OtherPid) ->
     gen_fsm:send_all_state_event(OtherPid, cancel).
-
-init(Name) ->
-    {ok, idle, #state{name=Name}}.
 
 %%% CUSTOM STATES
 
@@ -187,6 +185,9 @@ wait(are_you_ready, S=#state{}) ->
     am_ready(S#state.other),
     notice(S, "asked if ready, and I am. Waiting for same reply", []),
     {next_state, wait, S};
+wait(not_yet, S=#state{}) ->
+    notice(S, "Other not ready yet", []),
+    {next_state, wait, S};
 wait('ready!', S=#state{}) ->
     am_ready(S#state.other),
     ack_trans(S#state.other),
@@ -230,7 +231,7 @@ ready(ask_commit, _From, S) ->
 ready(do_commit, _From, S) ->
     notice(S, "committing...", []),
     commit(S),
-    {sotp, normal, ok, S};
+    {stop, normal, ok, S};
 ready(Event, _From, Data) ->
     unexpected(Event, ready),
     {next_state, ready, Data}.
@@ -241,6 +242,11 @@ commit(S=#state{}) ->
               "This operation should have some atomic save "
               "in a database.~n",
               [S#state.name, S#state.ownitems, S#state.otheritems]).
+
+%%% GEN_FSM CALLBACK.
+
+init(Name) ->
+    {ok, idle, #state{name=Name}}.
 
 %% The other player has sent this cancel event
 %% stop whatever we're doing and shut down!
@@ -275,9 +281,11 @@ code_change(_OldVsn, StateName, Data, _Extra) ->
 
 %% Transaction complete.
 terminate(normal, ready, S=#state{}) ->
-    notice(S, "FSM leavving.", []);
+    notice(S, "FSM leaving.", []);
 terminate(_Reason, _StateName, _StateData) ->
     ok.
+
+%%% UTILITY FUNCTIONS
 
 %% adds an item to an item list
 add(Item, Items) ->
