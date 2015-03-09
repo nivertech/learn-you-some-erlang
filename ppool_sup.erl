@@ -7,7 +7,7 @@ start_link(Name, Limit, MFA) ->
     supervisor:start_link(?MODULE, {Name, Limit, MFA}).
 
 init({Name, Limit, MFA}) ->
-    MaxRestart = 1;
+    MaxRestart = 1,
     MaxTime = 3600,
     {ok, {{one_for_all, MaxRestart, MaxTime},
          [{serv,
