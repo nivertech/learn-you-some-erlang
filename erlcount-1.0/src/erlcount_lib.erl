@@ -1,6 +1,6 @@
 -module(erlcount_lib).
 
--export([find_erl/1]).
+-export([find_erl/1, regex_count/2]).
 -include_lib("kernel/include/file.hrl").
 
 %% Fins all files ending in .erl
@@ -15,6 +15,13 @@ find_erl(Name, Queue) ->
         directory -> handle_directory(Name, Queue);
         regular -> handle_regular_file(Name, Queue);
         _Other -> dequeue_and_run(Queue)
+    end.
+
+%% Count time sthe regex matches in the string.
+regex_count(Re, Str) ->
+    case re:run(Str, Re, [global]) of
+        nomatch -> 0;
+        {match, List} -> length(List)
     end.
 
 %% Opens directories and enqueues files in there
